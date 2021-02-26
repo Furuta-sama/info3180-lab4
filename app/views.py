@@ -9,7 +9,7 @@ from app import app
 from app import forms
 from flask import render_template, request, redirect, url_for, flash, session, abort
 from werkzeug.utils import secure_filename
-
+from flask import send_from_directory
 
 ###
 # Routing for your application.
@@ -29,8 +29,6 @@ def about():
 
 @app.route('/upload', methods=['POST', 'GET'])
 def upload():
-    if not session.get('logged_in'):
-        abort(401)
 
     # Instantiate your form class
     uploadform = forms.UploadForm()
@@ -51,9 +49,17 @@ def upload():
         ))
         flash('File Saved', 'success')
         return redirect(url_for('home'))
-
     return render_template('upload.html', form=uploadform)
 
+@app.route("/uploads/<path:filename>")
+def get_image(filename):
+    root_dir = os.getcwd()
+    return send_from_directory(os.path.join(root_dir, app.config['UPLOAD_FOLDER']), filename)
+
+@app.route("/files")
+def files():
+    lst = get_uploaded_images()
+    return render_template('files.html', items=lst)
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -79,6 +85,19 @@ def logout():
 ###
 # The functions below should be applicable to all Flask apps.
 ###
+
+# Helper function 
+def get_uploaded_images():
+    import os
+    rootdir = os.getcwd()
+    lst = []
+    for subdir, dirs, files in os.walk(rootdir + '/uploads'):
+        for file in files:
+            lst.append(file)
+            if not session.get('logged_in'):
+                abort(401)
+    lst.pop(0)
+    return lst 
 
 # Flash errors from the form if validation fails
 def flash_errors(form):
